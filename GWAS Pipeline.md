@@ -1,6 +1,21 @@
 # GWAS Pipeline
 
+# Upload raw data files
+
+scp -r /local/directory/path/to/files/ user@qb.loni.org:/path/to/folder
+
+# Unzip files
+
+gunzip -r /path/to/files/*gz.fq
+
+# Concatenate files from the same sample 
+
+cat samplename_lane_number samplename_lane_number > newsamplename.fq
+
+##lane number will be different since reads were run on different lanes but the last number should be the same
+
 # Run FastQC on all samples to check quality of reads
+
 for i in /path/to/files/*.fq do /path/to/FastQC/fastqc $i; done
 
 # FastQC creates fastqc.html files that need to be downloaded to computer to view 
