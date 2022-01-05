@@ -1,5 +1,8 @@
 # GWAS Pipeline
 
+[![hackmd-github-sync-badge](https://hackmd.io/wtlDJUFBRWmgodbEftrUxQ/badge)](https://hackmd.io/wtlDJUFBRWmgodbEftrUxQ)
+
+
 # Upload raw data files
 
 scp -r /local/directory/path/to/files/ user@qb.loni.org:/path/to/folder
@@ -16,6 +19,8 @@ cat samplename_lane_number samplename_lane_number > newsamplename.fq
 
 # Run FastQC on all samples to check quality of reads
 
+{if loading from conda; doesn't need to be repeated below} /path/to/fastqc
+
 for i in /path/to/files/*.fq do /path/to/FastQC/fastqc $i; done
 
 # FastQC creates fastqc.html files that need to be downloaded to computer to view 
@@ -23,7 +28,15 @@ for i in /path/to/files/*.fq do /path/to/FastQC/fastqc $i; done
 scp user@qb.loni.org:/path/to/files/*.html /local/directory/
 ##scp securely copies files
 
-# had high quality reads so didn't trim but would trim here 
+# Trim reads using Trimmomatic  
+
+module load jdk/1.8.0_262/intel-19.0.5
+
+java -jar /path/to/Trimmomatic-0.39/trimmomatic-0.39.jar PE /path/to/file/file.fq /path/to/file/file.fq /path/to/file/file_1P.fq /path/to/file/file_1U.fq /path/to/file/file_2P.fq /path/to/file/file_2U.fq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
+
+##-jar executes trimmomatic, PE paired-end reads, Leading removes bases at the beginning of the read that fall below specified quality score, trailing removes bases at the end of the read that fall below specified quality score, slidingwindow trim and cut when the average quality score is below what is specified- first number is the window size and the second number is the required quality score, minlen remove reads that fall below the minimum length specified 
+
+##1P paired read 1, 1U unpaired read 1, 2P paired read 2, 2U unpaired read 2 
 
 # Quality filter reads using FastQ
 
@@ -34,7 +47,7 @@ for i in /path/to/files/*.fq; do fastq_quality_filter -Q33 -q20 -p 98 -i -o{i%.f
 ##-Q sequence type, -q minimum quality score to keep, -p minimum percent of bases that have to have -q quality 
 ##output creates .qual.fq files (default is STDOUT)
 
-# Index Reference Genome using BWA Index, Samtools and GATK
+# Index Reference Genome using BWA Index; Create .fai and .dict files with Samtools and GATK
 
 ##Indexing the genome is like a book index, used to make alignment easier later 
 
@@ -85,7 +98,7 @@ for i in /path/to/files/*PE.sam; do samtools view -q 20 -bt /path/to/reference/.
 ##-q skip alignments with mapping quality less than specified number, -bt output in BAM format
 ##output creates bamq20 files
 
-# Assign all reads to to read-group for GATK using Picard tools
+# Assign all reads to read-group for GATK using Picard tools
 
 cd $PBS_O_WORKDIR
 mkdir -p tmp
