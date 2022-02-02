@@ -32,7 +32,7 @@ scp user@qb.loni.org:/path/to/files/*.html /local/directory/
 
 module load jdk/1.8.0_262/intel-19.0.5
 
-java -jar /path/to/Trimmomatic-0.39/trimmomatic-0.39.jar PE /path/to/file/file.fq /path/to/file/file.fq /path/to/file/file_1P.fq /path/to/file/file_1U.fq /path/to/file/file_2P.fq /path/to/file/file_2U.fq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
+java -jar /path/to/Trimmomatic-0.39/trimmomatic-0.39.jar PE /path/to/forward/file.fq /path/to/reverse/file.fq /path/to/forward/file/file_1P.fq /path/to/forward/file/file_1U.fq /path/to/reverse/file/file_2P.fq /path/to/reverse/file/file_2U.fq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
 
 ##-jar executes trimmomatic, PE paired-end reads, Leading removes bases at the beginning of the read that fall below specified quality score, trailing removes bases at the end of the read that fall below specified quality score, slidingwindow trim and cut when the average quality score is below what is specified- first number is the window size and the second number is the required quality score, minlen remove reads that fall below the minimum length specified 
 
@@ -52,24 +52,23 @@ for i in /path/to/files/*.fq; do fastq_quality_filter -Q33 -q20 -p 98 -i -o{i%.f
 ##Indexing the genome is like a book index, used to make alignment easier later 
 
 # BWA Index
-module load bwa/0.7.15/INTEL-14.0.2 
-bwa index -a bwtsw /path/to/reference/.fa
+module load bwa/0.7.17/intel-19.0.5  
+bwa index -a bwtsw /path/to/reference/reference.fa
 
 ##path to the version of BWA installed on LONI 
 ##-a algorithm to construct index from, bwtsw algorithm implemented in BWT-SW which is for large genomes, just need -a for small genomes 
 
 # Samtools
-source /path/to/miniconda3/etc/profile.d/conda.sh
-conda activate samtools-1.11
-/path/to/conda-env/envs/samtools-1.11/bin/samtools faidx /path/to/reference/.fa
+module load samtools/1.10/intel-19.0.5
+samtools faidx /path/to/reference/reference.fa
 
 ##Samtools path from download via conda
 ##Faidx will index input file and create a .fai file
 
 
 # GATK
-module load java/1.8.0 
-/path/to/gatk-4.1.2.0/gatk --java-options "-Xmx2G" CreateSequenceDictionary -R /path/to/reference/.fa
+module load jdk/1.8.0_262/intel-19.0.5 
+/path/to/gatk-4.1.2.0/gatk --java-options "-Xmx2G" CreateSequenceDictionary -R /path/to/reference/reference.fa
 
 ##path to java version installed on LONI 
 ##-Xmx2G sets the initial and maximum heap size available to improve performance, CreateSequenceDictionary creates .dict file, -R reference
@@ -77,21 +76,19 @@ module load java/1.8.0
 
 # Align reads to reference using BWA mem
 
-module load bwa/0.7.15/INTEL-14.0.2
-for i in /path/to/files/*.fq; do bwa mem -v 3 -M -P -a -t 10 
-/path/to/reference/.fa 
-$i ${i/1.fq/2.fq} > ${i%1.fq}PE.sam 2> ${i%1.fq}PE.mem.log; done
+module load bwa/0.7.17/intel-19.0.5
+
+for i in /path/to/files/*.qual.fq; do bwa mem -a -M -P -t 10 -v 3 \ 
+/path/to/reference/reference.fa \ 
+$i ${i/1P/2P} > ${i%.qual.fq}.sam 2> ${i%.qual.fq}.mem.log; done
 
 ##path to the version of BWA installed on LONI
 ##bwa mem aligns 70bp-1Mbp sequences, -v verbose level (a value 0 for disabling all the output to stderr; 1 for outputting errors only; 2 for warnings and errors; 3 for all normal messages; 4 or higher for debugging), -M mark shorter split hits as secondary (for Picard compatibility), -P paired-end mode, -a output all found alignments, -t number of threads 
-##output creates PE.sam and PE.mem.log files
+##output creates .sam and .mem.log files
 
 
 # Create BAM files for downstream analyses using Samtools View
 
-source /path/to/miniconda3/etc/profile.d/conda.sh
-conda activate samtools-1.11
-/path/to/conda-env/envs/samtools-1.11/bin/samtools
 for i in /path/to/files/*PE.sam; do samtools view -q 20 -bt /path/to/reference/.fa -o ${i%sam}bamq20 $i; done
 
 ##Samtools path from download via conda
