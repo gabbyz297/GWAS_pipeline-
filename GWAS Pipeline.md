@@ -89,24 +89,32 @@ $i ${i/1P/2P} > ${i%.qual.fq}.sam 2> ${i%.qual.fq}.mem.log; done
 
 # Create BAM files for downstream analyses using Samtools View
 
-for i in /path/to/files/*PE.sam; do samtools view -q 20 -bt /path/to/reference/.fa -o ${i%sam}bamq20 $i; done
+for i in /path/to/files/*.sam; do samtools view -q 20 -bt /path/to/reference/.fa -o ${i%sam}bam $i; done
 
 ##Samtools path from download via conda
 ##-q skip alignments with mapping quality less than specified number, -bt output in BAM format
 ##output creates bamq20 files
+
+# Merge forward and reverse reads using Samtools Merge
+
+module load samtools/1.10/intel-19.0.5
+
+samtools merge /path/to/output/output.bam /path/to/file/file_1P.bam /path/to/file/file_2P.bam -@4;
+
+##-@ number of input/output compression threads to use in addition to main thread 
 
 # Assign all reads to read-group for GATK using Picard tools
 
 cd $PBS_O_WORKDIR
 mkdir -p tmp
 
-module load  java/1.8.0
+module load jdk/1.8.0_262/intel-19.0.5
 
-for i in /path/to/files/*.bamq20;
+for i in /path/to/files/*.bam;
 do
         java -Dpicard.useLegacyParser=false -Xmx2g -jar /path/to/picard/picard.jar \
-        AddOrReplaceReadGroups -I $i -O ${i%PE.bamq20}.tag.bam -MAX_RECORDS_IN_RAM 1000000 -TMP_DIR $PWD/tmp \
-        -SO coordinate -ID ${i%PE.bamq20} -LB 1 -PL illumina -PU 1 -SM ${i%PE.bamq20};
+        AddOrReplaceReadGroups -I $i -O ${i%.bam}.tag.bam -MAX_RECORDS_IN_RAM 1000000 -TMP_DIR $PWD/tmp \
+        -SO coordinate -ID ${i%.bam} -LB 1 -PL illumina -PU 1 -SM ${i%.bam};
 done
 
 ##path to java version installed on LONI
@@ -116,7 +124,7 @@ done
 
 # Mark PCR duplicates using Picard tools
 
-module load  java/1.8.0
+module load  jdk/1.8.0_262/intel-19.0.5
 cd $PBS_O_WORKDIR
 mkdir -p tmp
 
@@ -134,19 +142,16 @@ done
 
 # Index filtered files using Samtools
 
-source /path/to/miniconda3/etc/profile.d/conda.sh
-conda activate samtools-1.11
-/path/to/conda-env/envs/samtools-1.11/bin/samtools
+module load samtools/1.10/intel-19.0.5
 
 for i in /path/to/files/*.rmdup.bam; do samtools index $i; done
 
-##Samtools path from download via conda
 ##Samtools index indexes files for realignment 
 
 
 # Create GVCF files using GATK
 
-module load java/1.8.0
+module load jdk/1.8.0_262/intel-19.0.5
 
 /path/to/gatk-4.1.2.0/gatk --java-options "-Xmx4g" HaplotypeCaller --ERC GVCF -R /path/to/reference/.fa  -I /path/to/file/file.rmdup.bam -O /path/to/file/file.g.vcf --min-base-quality-score 20
 
@@ -156,7 +161,7 @@ module load java/1.8.0
 
 # Combine GVCF files using GATK
 
-module load java/1.8.0
+module load jdk/1.8.0_262/intel-19.0.5
 
 /path/to/gatk-4.1.2.0/gatk CombineGVCFs -R /path/to/reference/.fa  -V /path/to/file1/file1.g.vcf -V /path/to/file2/file2.g.vcf -O /path/to/file/combined.g.vcf 
 
@@ -166,7 +171,7 @@ module load java/1.8.0
 
 # Genotype GVCF file
 
-module load java/1.8.0
+module load jdk/1.8.0_262/intel-19.0.5
 
 /path/to/gatk-4.1.2.0/gatk --java-options "-Xmx4g" GenotypeGVCFs -R /path/to/reference/.fa  -V /path/to/file/combined.g.vcf -O /path/to/file/combined.vcf 
 
@@ -175,7 +180,7 @@ module load java/1.8.0
  
 # Select SNP and MNP variants using GATK
 
-module load java/1.8.0
+module load jdk/1.8.0_262/intel-19.0.5
 
 /path/to/gatk-4.1.2.0/gatk SelectVariants --variant /path/to/file/combined.vcf -R /path/to/reference/.fa --output /path/to/file/file2.vcf --select-type-to-include SNP --select-type-to-include MNP --exclude-non-variants true --set-filtered-gt-to-nocall true 
 
@@ -185,7 +190,7 @@ module load java/1.8.0
 
 # Quality filter variants and flag variants that don't meet criteria using GATK
 
-module load java/1.8.0
+module load jdk/1.8.0_262/intel-19.0.5
 
 /path/to/gatk-4.1.2.0/gatk VariantFiltration --variant /path/to/file/file2.vcf --output /path/to/file/file3.vcf -R /path/to/reference/.fa \
 --filter-name "ReadPosRankSum_filter" \
@@ -207,7 +212,7 @@ module load java/1.8.0
 
 # Remove flagged variants using GATK
 
-module load java/1.8.0
+module load jdk/1.8.0_262/intel-19.0.5
 
 /path/to/gatk-4.1.2.0/gatk SelectVariants -R /path/to/reference/.fa --variant /path/to/file/file3.vcf --output /path/to/file/file4.vcf --set-filtered-gt-to-nocall true
 
